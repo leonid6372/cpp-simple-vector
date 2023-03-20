@@ -91,10 +91,12 @@ public:
     }
     
     SimpleVector& operator=(const SimpleVector& rhs) {
-        SimpleVector temp(rhs);
-        items_.swap(temp.items_);
-        std::swap(size_, temp.size_);
-        std::swap(capacity_, temp.size_);
+        if(this != &rhs){
+            SimpleVector temp(rhs);
+            items_.swap(temp.items_);
+            std::swap(size_, temp.size_);
+            std::swap(capacity_, temp.size_);
+        }
         return *this;
     }
     
@@ -110,11 +112,12 @@ public:
 
     // Сообщает, пустой ли массив
     bool IsEmpty() const noexcept {
-        return size_ == 0 ? true : false;
+        return size_ == 0;
     }
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
+        assert(index <= size_);
         return items_[index];
     }
 
@@ -189,14 +192,15 @@ public:
     // Если перед вставкой значения вектор был заполнен полностью,
     // вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
     Iterator Insert(ConstIterator pos, const Type& value) {
+        assert(pos >= items_.Get() && pos <= (items_.Get() + size_));
         size_t new_size;
-		if(size_ < capacity_){
-			new_size = size_ + 1;
-		} else {
-			new_size = capacity_ == 0 ? 1 : capacity_ * 2;
-            capacity_ = new_size;
-		}
-		ArrayPtr<Type> temp(new_size);
+	if(size_ < capacity_){
+		new_size = size_ + 1;
+	} else {
+		new_size = capacity_ == 0 ? 1 : capacity_ * 2;
+        	capacity_ = new_size;
+	}
+	ArrayPtr<Type> temp(new_size);
         std::move(std::make_move_iterator(items_.Get()), std::make_move_iterator(const_cast<Iterator>(pos)), temp.Get());
         auto index = std::distance(items_.Get(), const_cast<Iterator>(pos));
         temp[index] = std::move(const_cast<Type&&>(value));
@@ -208,13 +212,14 @@ public:
     
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept {
-        if(size_ != 0){
-            --size_;
-        }
+        assert(size_ != 0);
+        --size_;
     }
     
     // Удаляет элемент вектора в указанной позиции
     Iterator Erase(ConstIterator pos) {
+        assert(pos >= items_.Get() && pos <= (items_.Get() + size_));
+        assert(size_ != 0);
         auto index = std::distance(items_.Get(), const_cast<Iterator>(pos));
         std::move(std::make_move_iterator(const_cast<Iterator>(pos) + 1), std::make_move_iterator(items_.Get() + size_), const_cast<Iterator>(pos));
         --size_;
@@ -272,7 +277,13 @@ private:
 
 template <typename Type>
 inline bool operator==(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    return !(lhs > rhs) && !(lhs < rhs);
+    bool result = true;
+    for(size_t i = 0; i < std::max(lhs.GetSize(), rhs.GetSize()); ++i){
+        if(lhs[i] != rhs[i]){
+            result = false;
+        }
+    }
+    return result;
 }
 
 template <typename Type>
